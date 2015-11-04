@@ -104,6 +104,8 @@ import org.eclipse.jgit.util.RawParseUtils;
 import org.eclipse.jgit.util.TemporaryBuffer;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.eclipse.jgit.util.io.UnionInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Transport over HTTP and FTP protocols.
@@ -123,6 +125,7 @@ import org.eclipse.jgit.util.io.UnionInputStream;
  */
 public class TransportHttp extends HttpTransport implements WalkTransport,
 		PackTransport {
+	private final static Logger LOG = LoggerFactory.getLogger(TransportHttp.class);
 
 	private static final String SVC_UPLOAD_PACK = "git-upload-pack"; //$NON-NLS-1$
 
@@ -455,6 +458,7 @@ public class TransportHttp extends HttpTransport implements WalkTransport,
 		Collection<Type> ignoreTypes = null;
 		for (;;) {
 			try {
+				if (LOG.isDebugEnabled()) LOG.debug("TransportHttp.connect({}): before httpOpen(), url={}, authAttempts={}, useSmartHttp={}", service, u, authAttempts, useSmartHttp);
 				final HttpConnection conn = httpOpen(u);
 				if (useSmartHttp) {
 					String exp = "application/x-" + service + "-advertisement"; //$NON-NLS-1$ //$NON-NLS-2$
@@ -463,6 +467,7 @@ public class TransportHttp extends HttpTransport implements WalkTransport,
 					conn.setRequestProperty(HDR_ACCEPT, "*/*"); //$NON-NLS-1$
 				}
 				final int status = HttpSupport.response(conn);
+				if (LOG.isDebugEnabled()) LOG.debug("status={}", status);
 				switch (status) {
 				case HttpConnection.HTTP_OK:
 					// Check if HttpConnection did some authentication in the
