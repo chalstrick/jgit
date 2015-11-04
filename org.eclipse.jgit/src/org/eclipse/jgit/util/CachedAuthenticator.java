@@ -49,8 +49,13 @@ import java.net.PasswordAuthentication;
 import java.util.Collection;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /** Abstract authenticator which remembers prior authentications. */
 public abstract class CachedAuthenticator extends Authenticator {
+	private final static Logger LOG = LoggerFactory.getLogger(CachedAuthenticator.class);
+
 	private static final Collection<CachedAuthentication> cached = new CopyOnWriteArrayList<CachedAuthentication>();
 
 	/**
@@ -68,8 +73,10 @@ public abstract class CachedAuthenticator extends Authenticator {
 		final String host = getRequestingHost();
 		final int port = getRequestingPort();
 		for (final CachedAuthentication ca : cached) {
-			if (ca.host.equals(host) && ca.port == port)
+			if (ca.host.equals(host) && ca.port == port) {
+				if (LOG.isDebugEnabled()) LOG.debug("getPasswordAuthentication(): host={}, port={}, returning a cached configuration:{}", host, port, ca); ;
 				return ca.toPasswordAuthentication();
+			}
 		}
 		PasswordAuthentication pa = promptPasswordAuthentication();
 		if (pa != null) {

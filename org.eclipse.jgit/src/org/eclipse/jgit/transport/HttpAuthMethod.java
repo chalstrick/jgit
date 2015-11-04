@@ -68,6 +68,8 @@ import org.ietf.jgss.GSSException;
 import org.ietf.jgss.GSSManager;
 import org.ietf.jgss.GSSName;
 import org.ietf.jgss.Oid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Support class to populate user authentication data on a connection.
@@ -76,6 +78,8 @@ import org.ietf.jgss.Oid;
  * may need to maintain per-connection state information.
  */
 abstract class HttpAuthMethod {
+	private final static Logger LOG = LoggerFactory.getLogger(HttpAuthMethod.class);
+
 	/**
 	 * Enum listing the http authentication method types supported by jgit. They
 	 * are sorted by priority order!!!
@@ -163,6 +167,7 @@ abstract class HttpAuthMethod {
 			if (HDR_WWW_AUTHENTICATE.equalsIgnoreCase(entry.getKey())) {
 				if (entry.getValue() != null) {
 					for (final String value : entry.getValue()) {
+						if (LOG.isDebugEnabled()) LOG.debug("scanResponse(): insepcting header {}, value: {}: ", entry.getKey(), entry.getValue());
 						if (value != null && value.length() != 0) {
 							final String[] valuePart = value.split(
 									SCHEMA_NAME_SEPARATOR, 2);
@@ -306,6 +311,7 @@ abstract class HttpAuthMethod {
 
 		@Override
 		void configureRequest(final HttpConnection conn) throws IOException {
+			if (LOG.isDebugEnabled()) LOG.debug("Basic.configureRequest(conn: {}): user: {}, password:{}", conn, user, pass);
 			String ident = user + ":" + pass; //$NON-NLS-1$
 			String enc = Base64.encodeBytes(ident.getBytes("UTF-8")); //$NON-NLS-1$
 			conn.setRequestProperty(HDR_AUTHORIZATION, type.getSchemeName()

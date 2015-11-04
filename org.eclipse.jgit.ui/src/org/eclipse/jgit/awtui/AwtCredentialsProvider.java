@@ -61,9 +61,13 @@ import org.eclipse.jgit.transport.CredentialItem;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.NetRCCredentialsProvider;
 import org.eclipse.jgit.transport.URIish;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Interacts with the user during authentication by using AWT/Swing dialogs. */
 public class AwtCredentialsProvider extends CredentialsProvider {
+	private final static Logger LOG = LoggerFactory.getLogger(AwtCredentialsProvider.class);
+
 	/** Install this implementation as the default. */
 	public static void install() {
 		final AwtCredentialsProvider c = new AwtCredentialsProvider();
@@ -92,8 +96,10 @@ public class AwtCredentialsProvider extends CredentialsProvider {
 			else if (i instanceof CredentialItem.InformationalMessage)
 				continue;
 
-			else
+			else {
+				if (LOG.isDebugEnabled()) LOG.debug("supports(): returning false because item {} is not supported", i);
 				return false;
+			}
 		}
 		return true;
 	}
@@ -128,6 +134,7 @@ public class AwtCredentialsProvider extends CredentialsProvider {
 				case JOptionPane.CANCEL_OPTION:
 				case JOptionPane.CLOSED_OPTION:
 				default:
+					if (LOG.isDebugEnabled()) LOG.debug("get(): returning false because dialog return was {}", r);
 					return false;
 				}
 
@@ -176,14 +183,18 @@ public class AwtCredentialsProvider extends CredentialsProvider {
 				gbc.gridy++;
 
 			} else {
+				if (LOG.isDebugEnabled()) LOG.debug("interactive(): throw UnsupportedCredentialItem bause of item {}", item);
 				throw new UnsupportedCredentialItem(uri, item.getPromptText());
 			}
 		}
 
+		if (LOG.isDebugEnabled()) LOG.debug("interactive(): about to show dialog");
 		if (JOptionPane.showConfirmDialog(null, panel,
 				UIText.get().authenticationRequired,
-				JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE) != JOptionPane.OK_OPTION)
+				JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE) != JOptionPane.OK_OPTION) {
+			if (LOG.isDebugEnabled()) LOG.debug("interactive(): return false because dialog was canceled");
 			return false; // cancel
+		}
 
 		for (int i = 0; i < items.length; i++) {
 			CredentialItem item = items[i];
@@ -195,13 +206,14 @@ public class AwtCredentialsProvider extends CredentialsProvider {
 					v.setValue(new String(((JPasswordField) f).getPassword()));
 				else
 					v.setValue(f.getText());
-
+				if (LOG.isDebugEnabled()) LOG.debug("interactive(): (StringType)item was set={}", v.getValue());
 			} else if (item instanceof CredentialItem.CharArrayType) {
 				CredentialItem.CharArrayType v = (CredentialItem.CharArrayType) item;
 				if (f instanceof JPasswordField)
 					v.setValueNoCopy(((JPasswordField) f).getPassword());
 				else
 					v.setValueNoCopy(f.getText().toCharArray());
+				if (LOG.isDebugEnabled()) LOG.debug("interactive(): (CharArrayType)item was set={}", v.getValue());
 			}
 		}
 		return true;

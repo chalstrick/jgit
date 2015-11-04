@@ -57,9 +57,13 @@ import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 
 import org.eclipse.jgit.util.CachedAuthenticator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Basic network prompt for username/password when using AWT. */
 public class AwtAuthenticator extends CachedAuthenticator {
+	private final static Logger LOG = LoggerFactory.getLogger(AwtAuthenticator.class);
+
 	/** Install this authenticator implementation into the JVM. */
 	public static void install() {
 		setDefault(new AwtAuthenticator());
@@ -126,13 +130,16 @@ public class AwtAuthenticator extends CachedAuthenticator {
 		panel.add(password, gbc);
 		gbc.gridy++;
 
+		if (LOG.isDebugEnabled()) LOG.debug("promptPasswordAuthentication(): about to show dialog. scheme: {}, url: {}", getRequestingScheme(), getRequestingURL());
 		if (JOptionPane.showConfirmDialog(null, panel,
 				UIText.get().authenticationRequired, JOptionPane.OK_CANCEL_OPTION,
 				JOptionPane.QUESTION_MESSAGE) == JOptionPane.OK_OPTION) {
+			if (LOG.isDebugEnabled()) LOG.debug("promptPasswordAuthentication(): return a new PasswordAuthentication. username:{}, password:{}", username.getText(), password.getPassword());
 			return new PasswordAuthentication(username.getText(), password
 					.getPassword());
 		}
 
+		if (LOG.isDebugEnabled()) LOG.debug("promptPasswordAuthentication(): return null");
 		return null; // cancel
 	}
 }

@@ -453,12 +453,11 @@ public class TransportHttp extends HttpTransport implements WalkTransport,
 			throw new NotSupportedException(MessageFormat.format(JGitText.get().invalidURL, uri), e);
 		}
 
-
 		int authAttempts = 1;
 		Collection<Type> ignoreTypes = null;
 		for (;;) {
 			try {
-				if (LOG.isDebugEnabled()) LOG.debug("TransportHttp.connect({}): before httpOpen(), url={}, authAttempts={}, useSmartHttp={}", service, u, authAttempts, useSmartHttp);
+				if (LOG.isDebugEnabled()) LOG.debug("connect({}): before httpOpen(), url={}, authAttempts={}, useSmartHttp={}", service, u, authAttempts, useSmartHttp);
 				final HttpConnection conn = httpOpen(u);
 				if (useSmartHttp) {
 					String exp = "application/x-" + service + "-advertisement"; //$NON-NLS-1$ //$NON-NLS-2$
@@ -574,6 +573,7 @@ public class TransportHttp extends HttpTransport implements WalkTransport,
 				conn.setRequestProperty(entry.getKey(), entry.getValue());
 		}
 		authMethod.configureRequest(conn);
+		if (LOG.isDebugEnabled()) LOG.debug("httpOpen({}, {}) was called. proxy: {}, HttpConfig(postBuffer:{}, sslverify:{}), timeOut:{}, headers:({}), authMedthod: {}", method, u, proxy, http.postBuffer, http.sslVerify, timeOut, headers, authMethod);
 		return conn;
 	}
 

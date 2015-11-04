@@ -48,6 +48,9 @@ import java.net.URL;
 
 import org.eclipse.jgit.transport.http.HttpConnection;
 import org.eclipse.jgit.transport.http.HttpConnectionFactory;
+import org.eclipse.jgit.transport.http.LoggingHttpConnection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A factory returning instances of {@link HttpClientConnection}
@@ -55,12 +58,18 @@ import org.eclipse.jgit.transport.http.HttpConnectionFactory;
  * @since 3.3
  */
 public class HttpClientConnectionFactory implements HttpConnectionFactory {
+	private final static Logger LOG = LoggerFactory.getLogger(HttpClientConnection.class);
+
 	public HttpConnection create(URL url) throws IOException {
-		return new HttpClientConnection(url.toString());
+		HttpConnection conn = new HttpClientConnection(url.toString());
+		if (LOG.isDebugEnabled()) conn=new LoggingHttpConnection(conn,  LOG);
+		return conn;
 	}
 
 	public HttpConnection create(URL url, Proxy proxy)
 			throws IOException {
-		return new HttpClientConnection(url.toString(), proxy);
+		HttpConnection conn = new HttpClientConnection(url.toString(), proxy);
+		if (LOG.isDebugEnabled()) conn=new LoggingHttpConnection(conn,  LOG);
+		return conn;
 	}
 }

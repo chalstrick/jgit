@@ -46,18 +46,27 @@ import java.io.IOException;
 import java.net.Proxy;
 import java.net.URL;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A factory returning instances of {@link JDKHttpConnection}
  *
  * @since 3.3
  */
 public class JDKHttpConnectionFactory implements HttpConnectionFactory {
+	private final static Logger LOG = LoggerFactory.getLogger(JDKHttpConnection.class);
+
 	public HttpConnection create(URL url) throws IOException {
-		return new JDKHttpConnection(url);
+		HttpConnection conn = new JDKHttpConnection(url);
+		if (LOG.isDebugEnabled()) conn=new LoggingHttpConnection(conn,  LOG);
+		return conn;
 	}
 
 	public HttpConnection create(URL url, Proxy proxy)
 			throws IOException {
-		return new JDKHttpConnection(url, proxy);
+		HttpConnection conn = new JDKHttpConnection(url, proxy);
+		if (LOG.isDebugEnabled()) conn=new LoggingHttpConnection(conn,  LOG);
+		return conn;
 	}
 }
