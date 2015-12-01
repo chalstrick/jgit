@@ -79,8 +79,8 @@ import org.eclipse.jgit.treewalk.filter.AndTreeFilter;
 import org.eclipse.jgit.treewalk.filter.IndexDiffFilter;
 import org.eclipse.jgit.treewalk.filter.SkipWorkTreeFilter;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.eclipse.jgit.util.StdErrLogger;
+import org.eclipse.jgit.util.StdErrLoggerFactory;
 
 /**
  * Compares the index, a tree, and the working directory Ignored files are not
@@ -97,7 +97,8 @@ import org.slf4j.LoggerFactory;
  * </ul>
  */
 public class IndexDiff {
-	private final static Logger LOG = LoggerFactory.getLogger(IndexDiff.class);
+	// private final static Logger LOG = LoggerFactory.getLogger(IndexDiff.class);
+	private final static StdErrLogger LOG = StdErrLoggerFactory.getLogger(IndexDiff.class);
 
 	/**
 	 * Represents the state of the index for a certain path regarding the stages

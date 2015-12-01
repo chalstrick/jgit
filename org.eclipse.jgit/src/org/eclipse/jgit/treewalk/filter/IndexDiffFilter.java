@@ -56,8 +56,8 @@ import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.WorkingTreeIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.eclipse.jgit.util.StdErrLogger;
+import org.eclipse.jgit.util.StdErrLoggerFactory;
 
 /**
  * A performance optimized variant of {@link TreeFilter#ANY_DIFF} which should
@@ -82,7 +82,8 @@ import org.slf4j.LoggerFactory;
  * Always construct a new instance of this filter for each TreeWalk.
  */
 public class IndexDiffFilter extends TreeFilter {
-	private final static Logger LOG = LoggerFactory.getLogger(IndexDiffFilter.class);
+	// private final static Logger LOG = LoggerFactory.getLogger(IndexDiffFilter.class);
+	private final static StdErrLogger LOG = StdErrLoggerFactory.getLogger(IndexDiffFilter.class);
 
 	private final int dirCache;
 
