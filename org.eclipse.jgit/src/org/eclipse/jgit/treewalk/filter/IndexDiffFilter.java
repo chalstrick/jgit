@@ -56,6 +56,8 @@ import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.WorkingTreeIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A performance optimized variant of {@link TreeFilter#ANY_DIFF} which should
@@ -80,6 +82,8 @@ import org.eclipse.jgit.treewalk.WorkingTreeIterator;
  * Always construct a new instance of this filter for each TreeWalk.
  */
 public class IndexDiffFilter extends TreeFilter {
+	private final static Logger LOG = LoggerFactory.getLogger(IndexDiffFilter.class);
+
 	private final int dirCache;
 
 	private final int workingTree;
@@ -136,15 +140,20 @@ public class IndexDiffFilter extends TreeFilter {
 		WorkingTreeIterator wi = workingTree(tw);
 		String path = tw.getPathString();
 
+		if (LOG.isDebugEnabled()) LOG.debug("inspecting path {}", path);
 		DirCacheIterator di = tw.getTree(dirCache, DirCacheIterator.class);
 		if (di != null) {
 			DirCacheEntry dce = di.getDirCacheEntry();
 			if (dce != null) {
 				if (dce.isAssumeValid())
+				{ if (LOG.isDebugEnabled()) LOG.debug("index contains assumeValid -> don't include");
 					return false;
+				}
 				// Never filter index entries with a stage different from 0
 				if (dce.getStage() != 0)
+				{ if (LOG.isDebugEnabled()) LOG.debug("index contains non-null stage -> include");
 					return true;
+				}
 			}
 		}
 
@@ -180,7 +189,9 @@ public class IndexDiffFilter extends TreeFilter {
 		// If the working tree file doesn't exist, it does exist for at least
 		// one other so include this difference.
 		if (wm == 0)
+		{ if (LOG.isDebugEnabled()) LOG.debug("no working tree but at least one other tree -> include");
 			return true;
+		}
 
 		// If the path does not appear in the DirCache and its ignored
 		// we can avoid returning a result here, but only if its not in any
@@ -199,9 +210,11 @@ public class IndexDiffFilter extends TreeFilter {
 
 				// If i is cnt then the path does not appear in any other tree,
 				// and this working tree entry can be safely ignored.
+				if (LOG.isDebugEnabled()) LOG.debug("i={}, cnt={}, include={}", i, cnt, i!=cnt);
 				return i != cnt;
 			} else {
 				// In working tree and not ignored, and not in DirCache.
+				if (LOG.isDebugEnabled()) LOG.debug("In working tree and not ignored, and not in DirCache -> include");
 				return true;
 			}
 		}
@@ -209,7 +222,9 @@ public class IndexDiffFilter extends TreeFilter {
 		// Always include subtrees as WorkingTreeIterator cannot provide
 		// efficient elimination of unmodified subtrees.
 		if (tw.isSubtree())
+		{	if (LOG.isDebugEnabled()) LOG.debug("pointing to subtree -> include");
 			return true;
+		}
 
 		// Try the inexpensive comparisons between index and all real trees
 		// first. Only if we don't find a diff here we have to bother with
@@ -218,14 +233,18 @@ public class IndexDiffFilter extends TreeFilter {
 			if (i == dirCache || i == workingTree)
 				continue;
 			if (tw.getRawMode(i) != dm || !tw.idEqual(i, dirCache))
+			{	if (LOG.isDebugEnabled()) LOG.debug("tree #{} (content:{},mode:{}) differs from index(content:{},mode:{}) -> include", tw.getObjectId(i), tw.getRawMode(i), dm, tw.getObjectId(dirCache));
 				return true;
+			}
 		}
 
 		// Only one chance left to detect a diff: between index and working
 		// tree. Make use of the WorkingTreeIterator#isModified() method to
 		// avoid computing SHA1 on filesystem content if not really needed.
-		return wi.isModified(di == null ? null : di.getDirCacheEntry(), true,
+		boolean ret = wi.isModified(di == null ? null : di.getDirCacheEntry(), true,
 				tw.getObjectReader());
+		if (LOG.isDebugEnabled()) LOG.debug("expensive modification test between index/workingtree results to: {}", ret);
+		return ret;
 	}
 
 	/**

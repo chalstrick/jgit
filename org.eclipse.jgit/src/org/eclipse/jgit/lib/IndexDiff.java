@@ -79,6 +79,8 @@ import org.eclipse.jgit.treewalk.filter.AndTreeFilter;
 import org.eclipse.jgit.treewalk.filter.IndexDiffFilter;
 import org.eclipse.jgit.treewalk.filter.SkipWorkTreeFilter;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Compares the index, a tree, and the working directory Ignored files are not
@@ -95,6 +97,7 @@ import org.eclipse.jgit.treewalk.filter.TreeFilter;
  * </ul>
  */
 public class IndexDiff {
+	private final static Logger LOG = LoggerFactory.getLogger(IndexDiff.class);
 
 	/**
 	 * Represents the state of the index for a certain path regarding the stages
@@ -401,6 +404,7 @@ public class IndexDiff {
 	public boolean diff(final ProgressMonitor monitor, int estWorkTreeSize,
 			int estIndexSize, final String title)
 			throws IOException {
+		if (LOG.isDebugEnabled()) LOG.debug("diff( called. repo={}, tree={}, wti={}, ignoreSubmoduleNode={}", repository, tree, initialWorkingTreeIterator, ignoreSubmoduleMode);
 		dirCache = repository.readDirCache();
 
 		try (TreeWalk treeWalk = new TreeWalk(repository)) {
@@ -435,6 +439,7 @@ public class IndexDiff {
 			treeWalk.setFilter(AndTreeFilter.create(filters));
 			fileModes.clear();
 			while (treeWalk.next()) {
+				if (LOG.isDebugEnabled()) LOG.debug("processing entry: {}", treeWalk.getPathString());
 				AbstractTreeIterator treeIterator = treeWalk.getTree(TREE,
 						AbstractTreeIterator.class);
 				DirCacheIterator dirCacheIterator = treeWalk.getTree(INDEX,
@@ -448,6 +453,7 @@ public class IndexDiff {
 					if (dirCacheEntry != null) {
 						int stage = dirCacheEntry.getStage();
 						if (stage > 0) {
+							if (LOG.isDebugEnabled()) LOG.debug("dircache contains nun-0 stage -> conflict");
 							String path = treeWalk.getPathString();
 							addConflict(path, stage);
 							continue;
@@ -465,26 +471,35 @@ public class IndexDiff {
 							if (!isEntryGitLink(treeIterator)
 									|| !isEntryGitLink(dirCacheIterator)
 									|| ignoreSubmoduleMode != IgnoreSubmoduleMode.ALL)
+							{	if (LOG.isDebugEnabled()) LOG.debug("tree/index differ in content or mode. At least one of them is no GITLINK -> changed");
 								changed.add(treeWalk.getPathString());
+							}
 						}
 					} else {
 						// in repo, not in index => removed
 						if (!isEntryGitLink(treeIterator)
 								|| ignoreSubmoduleMode != IgnoreSubmoduleMode.ALL)
+						{	if (LOG.isDebugEnabled()) LOG.debug("entry in repo not in index. repo contains no GITLINK -> removed");
 							removed.add(treeWalk.getPathString());
+						}
 						if (workingTreeIterator != null)
+						{	if (LOG.isDebugEnabled()) LOG.debug("entry in repo not in index. wti is non-null -> untracked");
 							untracked.add(treeWalk.getPathString());
+						}
 					}
 				} else {
 					if (dirCacheIterator != null) {
 						// not in repo, in index => added
 						if (!isEntryGitLink(dirCacheIterator)
 								|| ignoreSubmoduleMode != IgnoreSubmoduleMode.ALL)
+						{	if (LOG.isDebugEnabled()) LOG.debug("entry not in repo but in index. index no submodule -> added");
 							added.add(treeWalk.getPathString());
+						}
 					} else {
 						// not in repo, not in index => untracked
 						if (workingTreeIterator != null
 								&& !workingTreeIterator.isEntryIgnored()) {
+							if (LOG.isDebugEnabled()) LOG.debug("entry no in repo/index. wti non-null and not ignored -> untracked");
 							untracked.add(treeWalk.getPathString());
 						}
 					}
@@ -495,7 +510,9 @@ public class IndexDiff {
 						// in index, not in workdir => missing
 						if (!isEntryGitLink(dirCacheIterator)
 								|| ignoreSubmoduleMode != IgnoreSubmoduleMode.ALL)
+						{	if (LOG.isDebugEnabled()) LOG.debug("entry in index, not in workdir, index no gitlink => missing");
 							missing.add(treeWalk.getPathString());
+						}
 					} else {
 						if (workingTreeIterator.isModified(
 								dirCacheIterator.getDirCacheEntry(), true,
@@ -505,7 +522,9 @@ public class IndexDiff {
 									|| !isEntryGitLink(workingTreeIterator)
 									|| (ignoreSubmoduleMode != IgnoreSubmoduleMode.ALL
 											&& ignoreSubmoduleMode != IgnoreSubmoduleMode.DIRTY))
+							{	if (LOG.isDebugEnabled()) LOG.debug("entry in index, in workdir, content differs. At least one of index/tree is not a gitlink => modified");
 								modified.add(treeWalk.getPathString());
+							}
 						}
 					}
 				}
@@ -527,6 +546,7 @@ public class IndexDiff {
 			IgnoreSubmoduleMode localIgnoreSubmoduleMode = ignoreSubmoduleMode;
 			SubmoduleWalk smw = SubmoduleWalk.forIndex(repository);
 			while (smw.next()) {
+				if (LOG.isDebugEnabled()) LOG.debug("Inspecting submodule: {}", smw.getPath());
 				try {
 					if (localIgnoreSubmoduleMode == null)
 						localIgnoreSubmoduleMode = smw.getModulesIgnore();
@@ -544,9 +564,12 @@ public class IndexDiff {
 				if (subRepo != null) {
 					try {
 						ObjectId subHead = subRepo.resolve("HEAD"); //$NON-NLS-1$
+						if (LOG.isDebugEnabled()) LOG.debug("submodule repo HEAD: {}", subHead);
 						if (subHead != null
 								&& !subHead.equals(smw.getObjectId()))
+						{	if (LOG.isDebugEnabled()) LOG.debug("submodules repo HEAD not as expected. expected={} -> modified", smw.getObjectId());
 							modified.add(smw.getPath());
+						}
 						else if (ignoreSubmoduleMode != IgnoreSubmoduleMode.DIRTY) {
 							IndexDiff smid = submoduleIndexDiffs.get(smw
 									.getPath());
@@ -556,6 +579,7 @@ public class IndexDiff {
 										wTreeIt.getWorkingTreeIterator(subRepo));
 								submoduleIndexDiffs.put(smw.getPath(), smid);
 							}
+							if (LOG.isDebugEnabled()) LOG.debug("start a new IndexDiff for submodule {}", smw.getPath());
 							if (smid.diff()) {
 								if (ignoreSubmoduleMode == IgnoreSubmoduleMode.UNTRACKED
 										&& smid.getAdded().isEmpty()
@@ -566,8 +590,10 @@ public class IndexDiff {
 										&& smid.getRemoved().isEmpty()) {
 									continue;
 								}
+								if (LOG.isDebugEnabled()) LOG.debug("submodules repo is dirty -> modified", smw.getObjectId());
 								modified.add(smw.getPath());
 							}
+							if (LOG.isDebugEnabled()) LOG.debug("finished with IndexDiff for submodule {}", smw.getPath());
 						}
 					} finally {
 						subRepo.close();
