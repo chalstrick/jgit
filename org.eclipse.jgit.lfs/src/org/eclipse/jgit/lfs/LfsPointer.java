@@ -111,17 +111,13 @@ public class LfsPointer {
 	 *            written
 	 */
 	public void encode(OutputStream out) {
-		try (PrintStream ps = new PrintStream(out, false,
-				StandardCharsets.UTF_8.name())) {
+		try (PrintStream ps = new PrintStream(out)) {
 			ps.print("version "); //$NON-NLS-1$
-			ps.print(VERSION + "\n"); //$NON-NLS-1$
+			ps.println(VERSION);
 			ps.print("oid " + HASH_FUNCTION_NAME + ":"); //$NON-NLS-1$ //$NON-NLS-2$
-			ps.print(oid.name() + "\n"); //$NON-NLS-1$
+			ps.println(oid.name());
 			ps.print("size "); //$NON-NLS-1$
-			ps.print(size + "\n"); //$NON-NLS-1$
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			ps.println(size);
 		}
 	}
 
@@ -143,7 +139,7 @@ public class LfsPointer {
 		long sz = -1;
 
 		try (BufferedReader br = new BufferedReader(
-				new InputStreamReader(in, StandardCharsets.UTF_8.name()))) {
+				new InputStreamReader(in))) {
 			for (String s = br.readLine(); s != null; s = br.readLine()) {
 				if (s.startsWith("#") || s.length() == 0) { //$NON-NLS-1$
 					continue;
