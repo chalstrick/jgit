@@ -49,6 +49,8 @@ import java.text.MessageFormat;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.internal.JGitText;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Computes the merge base(s) of the starting commits.
@@ -67,6 +69,9 @@ import org.eclipse.jgit.internal.JGitText;
  * any other generators wrapped around it.
  */
 class MergeBaseGenerator extends Generator {
+	private static Logger LOG = LoggerFactory
+			.getLogger(MergeBaseGenerator.class);
+
 	private static final int PARSED = RevWalk.PARSED;
 
 	private static final int IN_PENDING = RevWalk.SEEN;
@@ -97,6 +102,7 @@ class MergeBaseGenerator extends Generator {
 				if (c == null)
 					break;
 				add(c);
+				LOG.debug("init(): added commit {}", c);
 			}
 		} finally {
 			// Always free the flags immediately. This ensures the flags
@@ -109,6 +115,10 @@ class MergeBaseGenerator extends Generator {
 			//
 			recarryTest = branchMask | POPPED;
 			recarryMask = branchMask | POPPED | MERGE_BASE;
+			LOG.debug("init(): recarryTest:{}, recarryMask:{}",
+					Integer.toBinaryString(recarryTest),
+					Integer.toBinaryString(recarryMask));
+
 		}
 	}
 
@@ -136,27 +146,39 @@ class MergeBaseGenerator extends Generator {
 			IncorrectObjectTypeException, IOException {
 		for (;;) {
 			final RevCommit c = pending.next();
+			LOG.debug("next(): inspecting commit:{}, pending:{}", c, pending.toString());
 			if (c == null) {
+				LOG.debug("next(): processed all. ret={}", ret);
 				return null;
 			}
 
 			for (final RevCommit p : c.parents) {
+				LOG.debug("next(): inspecting parent {}", p);
 				if ((p.flags & IN_PENDING) != 0)
-					continue;
+					{ LOG.debug("next(): is already pending"); continue; }
 				if ((p.flags & PARSED) == 0)
 					p.parseHeaders(walker);
 				p.flags |= IN_PENDING;
 				pending.add(p);
+				LOG.debug("next(): added parent {}", p);
 			}
 
 			int carry = c.flags & branchMask;
 			boolean mb = carry == branchMask;
 			if (mb) {
+				LOG.debug("next(): found a mergeBase");
+
 				// If we are a merge base make sure our ancestors are
 				// also flagged as being popped, so that they do not
 				// generate to the caller.
 				//
 				carry |= MERGE_BASE;
+			}
+			else {
+				LOG.debug(
+						"next(): commit was no mergeBase. carry={}, branchMask={}. Will now carry to parents of commit {}",
+						Integer.toBinaryString(carry),
+						Integer.toBinaryString(branchMask), c);
 			}
 			carryOntoHistory(c, carry);
 
@@ -166,14 +188,16 @@ class MergeBaseGenerator extends Generator {
 				// that way we are done traversing; if not we just need
 				// to move to the next available commit and try again.
 				//
+				LOG.debug("next(): this commit is a ancestor of a already popped commit. Don't return this one");
 				if (pending.everbodyHasFlag(MERGE_BASE))
-					return null;
+					{ LOG.debug("next(): everybody else in pending has MERGE_BASE. stop processing"); return null; }
 				continue;
 			}
 			c.flags |= POPPED;
 
 			if (mb) {
 				c.flags |= MERGE_BASE;
+				LOG.debug("next(): will return {} as merge base", c);
 				return c;
 			}
 		}
@@ -191,9 +215,17 @@ class MergeBaseGenerator extends Generator {
 			for (int i = 1; i < n; i++) {
 				final RevCommit p = pList[i];
 				if (!carryOntoOne(p, carry))
+				{
+					LOG.debug(
+							"next(): Will now carry recursivly to the non-first parent of commit {} which is {}",
+							c, p);
 					carryOntoHistory(p, carry);
+				}
 			}
 
+			LOG.debug(
+					"next(): Will now carry shallow to the first parent of commit {} which is {}",
+					c, pList[0]);
 			c = pList[0];
 			if (carryOntoOne(c, carry))
 				break;
@@ -205,6 +237,9 @@ class MergeBaseGenerator extends Generator {
 		p.flags |= carry;
 
 		if ((p.flags & recarryMask) == recarryTest) {
+			LOG.debug(
+					"carryOntoOne(): We were popped without being a merge base, but we just got voted to be one.p={}. Readd myself and mark others as merge-base",
+					p);
 			// We were popped without being a merge base, but we just got
 			// voted to be one. Inject ourselves back at the front of the
 			// pending queue and tell all of our ancestors they are within

@@ -205,5 +205,8 @@ public abstract class RevObject extends ObjectIdOwnerMap.Entry {
 		s.append((flags & RevWalk.UNINTERESTING) != 0 ? 'u' : '-');
 		s.append((flags & RevWalk.SEEN) != 0 ? 's' : '-');
 		s.append((flags & RevWalk.PARSED) != 0 ? 'p' : '-');
+		int f2 = flags >> RevWalk.RESERVED_FLAGS;
+		if (f2 != 0)
+			s.append("flags: " + Integer.toBinaryString(f2));
 	}
 }
